@@ -110,12 +110,12 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         | x :: xs ->
           let%bind () =
             Tb.cycle
-              { Tb.input_zero with data_in_valid = vdd; data_in = Bits.of_int ~width:8 x }
+              { Tb.input_zero with data_in_valid = vdd; data_in = of_int_trunc ~width:8 x }
             >>| ignore
           in
           let rec wait_until_idle () =
             let%bind result = Tb.cycle Tb.input_zero in
-            if Bits.to_bool result.after_edge.tx_idle
+            if to_bool result.after_edge.tx_idle
             then return ()
             else wait_until_idle ()
           in
@@ -132,9 +132,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       let%bind output = Tb.cycle Tb.input_hold in
       incr cycles;
       let output = output.before_edge in
-      if Bits.to_bool output.data_out_valid
-      then output_bytes := Bits.to_int output.data_out :: !output_bytes;
-      if Bits.to_bool output.data_out_valid && Bits.to_bool output.last
+      if to_bool output.data_out_valid
+      then output_bytes := to_int_trunc output.data_out :: !output_bytes;
+      if to_bool output.data_out_valid && to_bool output.last
       then
         return
           (List.rev !output_bytes |> List.map ~f:Char.of_int_exn |> String.of_char_list)

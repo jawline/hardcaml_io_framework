@@ -54,7 +54,7 @@ struct
           ]
       ];
     { O.out_valid = ctr.value ==:. buffer_beats - 1 &: in_valid
-    ; out_data = concat_lsb (List.concat [ data_parts; [ in_data ] ])
+    ; out_data = concat_msb (List.concat [ data_parts; [ in_data ] ])
     ; interim_data_buffered = ctr.value <>:. 0
     ; ready = ctr.value <:. buffer_beats - 2 |: out_ready
     }

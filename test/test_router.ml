@@ -12,9 +12,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
-      Bits.of_int ~width:16 (List.length packet)
+      of_int_trunc ~width:16 (List.length packet)
       |> split_msb ~part_width:8
-      |> List.map ~f:Bits.to_int
+      |> List.map ~f:to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ List.map ~f:Char.to_int packet
   in
@@ -111,8 +111,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
       in
-      pulse_1_ready <== pulse_1.up.tready;
-      pulse_2_ready <== pulse_2.up.tready;
+      pulse_1_ready <-- pulse_1.up.tready;
+      pulse_2_ready <-- pulse_2.up.tready;
       { O.pulse_1 = pulse_1.signal; pulse_2 = pulse_2.signal }
     ;;
   end
@@ -139,16 +139,16 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     then ()
     else (
       Cyclesim.cycle sim;
-      if Bits.to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
-      if Bits.to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
+      if to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
+      if to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
       loop_for (n - 1))
   in
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
+      inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
+      inputs.data_in_valid := gnd;
       loop_for 44)
     all_inputs;
   loop_for 500;

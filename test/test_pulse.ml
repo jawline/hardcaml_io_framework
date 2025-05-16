@@ -12,9 +12,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     (* We add the header and then the packet length before the packet *)
     let packet = String.to_list packet in
     let packet_len_parts =
-      Bits.of_int ~width:16 (List.length packet)
+      Bits.of_int_trunc ~width:16 (List.length packet)
       |> split_msb ~part_width:8
-      |> List.map ~f:Bits.to_int
+      |> List.map ~f:Bits.to_int_trunc
     in
     [ Char.to_int 'Q' ] @ packet_len_parts @ List.map ~f:Char.to_int packet
   in
@@ -111,9 +111,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
-      inputs.data_in := of_int ~width:8 input;
+      inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
-      inputs.data_in_valid := of_int ~width:1 0;
+      inputs.data_in_valid := gnd;
       loop_for 44)
     all_inputs;
   loop_for 100;
