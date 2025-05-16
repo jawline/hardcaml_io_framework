@@ -2,7 +2,7 @@ open! Core
 open Hardcaml
 open Hardcaml_waveterm
 open Hardcaml_uart
-open Hardcaml_io_controller
+open Hardcaml_io_framework
 open! Bits
 
 let debug = false

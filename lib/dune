@@ -1,5 +1,6 @@
 (library
- (name hardcaml_io_controller)
+ (name hardcaml_io_framework)
+ (public_name hardcaml_io_framework)
  (libraries hardcaml hardcaml_axi core)
  (inline_tests)
  (preprocess

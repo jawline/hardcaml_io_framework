@@ -1,5 +1,5 @@
 (library
- (name hardcaml_io_controller_test)
+ (name hardcaml_io_framework_test)
  (libraries
   hardcaml
   core
@@ -9,7 +9,7 @@
   hardcaml_step_testbench
   hardcaml_waveterm
   hardcaml_uart
-  hardcaml_io_controller)
+  hardcaml_io_framework)
  (inline_tests)
  (preprocess
   (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))
