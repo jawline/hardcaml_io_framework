@@ -1,0 +1,6 @@
+(library
+ (name hardcaml_io_controller)
+ (libraries hardcaml hardcaml_axi core)
+ (inline_tests)
+ (preprocess
+  (pps ppx_jane ppx_hardcaml ppx_deriving.show ppx_deriving.ord ppx_expect)))
