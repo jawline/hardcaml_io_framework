@@ -77,7 +77,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           }
       in
       let pulse =
-        Pulse.hierarchical ~instance:"pulse" scope { Pulse.I.clock; clear; in_ = dn }
+        Pulse.hierarchical ~instance:"pulse" scope { Pulse.I.clock; clear; up = dn }
       in
       { O.pulse = pulse.signal }
     ;;

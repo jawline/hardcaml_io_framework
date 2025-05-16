@@ -10,21 +10,21 @@ module Make (Axi : Stream.S) = struct
     type 'a t =
       { clock : 'a
       ; clear : 'a
-      ; in_ : 'a Axi.Source.t
+      ; up : 'a Axi.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
   module O = struct
     type 'a t =
-      { in_ : 'a Axi.Dest.t
+      { up : 'a Axi.Dest.t
       ; signal : 'a
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create (_scope : Scope.t) ({ I.clock = _; clear = _; in_ } : _ I.t) =
-    { O.in_ = { Axi.Dest.tready = vdd }; signal = in_.tvalid &: in_.tlast }
+  let create (_scope : Scope.t) ({ I.clock = _; clear = _; up } : _ I.t) =
+    { O.up = { Axi.Dest.tready = vdd }; signal = up.tvalid &: up.tlast }
   ;;
 
   let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
