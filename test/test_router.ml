@@ -95,21 +95,21 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           scope
           { Router.I.clock
           ; clear
-          ; in_ = dn
-          ; outs = [ { tready = pulse_1_ready }; { tready = pulse_2_ready } ]
+          ; up = dn
+          ; dns = [ { tready = pulse_1_ready }; { tready = pulse_2_ready } ]
           }
       in
       let pulse_1 =
         Pulse.hierarchical
           ~instance:"pulse_1"
           scope
-          { Pulse.I.clock; clear; in_ = List.nth_exn router.outs 0 }
+          { Pulse.I.clock; clear; in_ = List.nth_exn router.dns 0 }
       in
       let pulse_2 =
         Pulse.hierarchical
           ~instance:"pulse_2"
           scope
-          { Pulse.I.clock; clear; in_ = List.nth_exn router.outs 1 }
+          { Pulse.I.clock; clear; in_ = List.nth_exn router.dns 1 }
       in
       pulse_1_ready <== pulse_1.in_.tready;
       pulse_2_ready <== pulse_2.in_.tready;
