@@ -80,8 +80,7 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
     let rd_resp_ctr =
       Variable.reg ~width:(address_bits_for num_beats_to_write_word) reg_spec
     in
-    let latch ~enable t =
-            mux2 enable t (reg ~enable reg_spec t) in
+    let latch ~enable t = mux2 enable t (reg ~enable reg_spec t) in
     compile
       [ state.switch
           [ ( Waiting_for_tag
@@ -100,17 +99,14 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
             , [ (* This resets the state machine in cases where we see tlast
                    before the end of the read address. *)
                 when_ (up.tvalid &: up.tlast) [ state.set_next Waiting_for_tag ]
-              ; when_
-                  word_collector.out_valid
-                  [ 
-                   state.set_next Read_wait_response
-                  ]
+              ; when_ word_collector.out_valid [ state.set_next Read_wait_response ]
               ] )
           ; ( Read_wait_response
             , [ when_ slave_to_master.read_ready [ state.set_next Read_write_response ] ]
             )
           ; ( Read_write_response
-            , [ when_
+            , [ (* TODO: We can shave a cycle here by sending b0 on the read_wait_response final beat. *)
+                when_
                   dn.tready
                   [ incr rd_resp_ctr
                   ; when_
@@ -120,21 +116,20 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
               ] )
           ; ( Write_wait_address
             , [ when_ (up.tvalid &: up.tlast) [ state.set_next Waiting_for_tag ]
-              ; when_
-                  word_collector.out_valid
-                  [ state.set_next Write_wait_data
-                  ]
+              ; when_ word_collector.out_valid [ state.set_next Write_wait_data ]
               ] )
           ; ( Write_wait_data
             , [ when_ (up.tvalid &: up.tlast) [ state.set_next Waiting_for_tag ]
               ; when_
                   word_collector.out_valid
-                  [ if_ slave_to_master.write_ready [ state.set_next Waiting_for_tag ] [ state.set_next Write_wait_ack ] 
+                  [ if_
+                      slave_to_master.write_ready
+                      [ state.set_next Waiting_for_tag ]
+                      [ state.set_next Write_wait_ack ]
                   ]
-            ] );
-           ( Write_wait_ack, [
-            when_ slave_to_master.write_ready [ state.set_next Waiting_for_tag ]
-            ] )
+              ] )
+          ; ( Write_wait_ack
+            , [ when_ slave_to_master.write_ready [ state.set_next Waiting_for_tag ] ] )
           ]
       ];
     { O.up = { tready = vdd }
@@ -149,25 +144,32 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
         ; tlast = rd_resp_ctr.value ==:. num_beats_to_write_word - 1
         ; tuser = zero Axi.Source.port_widths.tuser
         }
-    ; master_to_slave = 
-
-            ( let first_beat_of_write = (state.is Write_wait_data &: word_collector.out_valid) in
-            let first_beat_of_read = state.is Read_wait_address &: word_collector.out_valid in
-{ write_valid = first_beat_of_write |: state.is Write_wait_ack
-
-                      ; write_first = first_beat_of_write
-                      ; read_valid = first_beat_of_read |: state.is Read_wait_response
-                      ; read_first = first_beat_of_read
-                      ; address = onehot_select [ 
-                              { With_valid.valid = state.is Write_wait_data  |: state.is Write_wait_ack ; value = 
-                              reg ~enable:(state.is Write_wait_address &: word_collector.out_valid) reg_spec (word_collector.out_data) 
-                      } ; { With_valid.valid = state.is Read_wait_address  |: state.is Read_wait_response
-                      
-                      ; value = latch ~enable:first_beat_of_read word_collector.out_data }
-      ]
-                      ; write_data = latch ~enable:first_beat_of_write word_collector.out_data
-                      ; write_byte_en = ones 4
-                      })
+    ; master_to_slave =
+        (let first_beat_of_write = state.is Write_wait_data &: word_collector.out_valid in
+         let first_beat_of_read =
+           state.is Read_wait_address &: word_collector.out_valid
+         in
+         { write_valid = first_beat_of_write |: state.is Write_wait_ack
+         ; write_first = first_beat_of_write
+         ; read_valid = first_beat_of_read |: state.is Read_wait_response
+         ; read_first = first_beat_of_read
+         ; address =
+             onehot_select
+               [ { With_valid.valid = state.is Write_wait_data |: state.is Write_wait_ack
+                 ; value =
+                     reg
+                       ~enable:(state.is Write_wait_address &: word_collector.out_valid)
+                       reg_spec
+                       word_collector.out_data
+                 }
+               ; { With_valid.valid =
+                     state.is Read_wait_address |: state.is Read_wait_response
+                 ; value = latch ~enable:first_beat_of_read word_collector.out_data
+                 }
+               ]
+         ; write_data = latch ~enable:first_beat_of_write word_collector.out_data
+         ; write_byte_en = ones 4
+         })
     }
   ;;
 

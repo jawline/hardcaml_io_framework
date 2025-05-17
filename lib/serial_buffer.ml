@@ -27,9 +27,9 @@ struct
   end
 
   let create
-    ~capacity
-    (_scope : Scope.t)
-    ({ I.clock; clear; in_valid; in_data; out_ready } : _ I.t)
+        ~capacity
+        (_scope : Scope.t)
+        ({ I.clock; clear; in_valid; in_data; out_ready } : _ I.t)
     =
     let buffer =
       Fifo.create

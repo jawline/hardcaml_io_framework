@@ -47,8 +47,8 @@ struct
   end
 
   let create
-    (scope : Scope.t)
-    ({ I.clock; clear; in_valid; in_data; dn = { tready = out_ready } } : _ I.t)
+        (scope : Scope.t)
+        ({ I.clock; clear; in_valid; in_data; dn = { tready = out_ready } } : _ I.t)
     =
     let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in

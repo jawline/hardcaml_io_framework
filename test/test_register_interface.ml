@@ -6,8 +6,6 @@ open Hardcaml_io_framework
 open Hardcaml_test_harness
 open! Bits
 
-
-
 module Internal_bus = Internal_bus.Make (struct
     let data_bits = 32
     let addr_bits = 32
@@ -64,8 +62,8 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
     end
 
     let create
-      (scope : Scope.t)
-      { I.clock; clear; data_in_valid; data_in; slave_to_master }
+          (scope : Scope.t)
+          { I.clock; clear; data_in_valid; data_in; slave_to_master }
       =
       let { Uart_tx.O.uart_tx; _ } =
         Uart_tx.hierarchical
@@ -107,64 +105,72 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
     ;;
   end
   in
-
-          let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O)  in
+  let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
   let create_sim f =
-          Harness.run ~waves_config:(Waves_config.No_waves) ~create:Machine.create (fun ~inputs:_ ~outputs:_ sim -> f sim) in
-
+    Harness.run
+      ~waves_config:Waves_config.No_waves
+      ~create:Machine.create
+      (fun ~inputs:_ ~outputs:_ sim -> f sim)
+  in
   create_sim (fun sim ->
-  let inputs : _ Machine.I.t = Cyclesim.inputs sim in
-  let outputs : _ Machine.O.t = Cyclesim.outputs ~clock_edge:Before sim in
-  let check_regif_state () =
-    inputs.slave_to_master.read_ready := gnd;
-    if Bits.to_bool !(outputs.master_to_slave.read_valid)
-    then (
-      inputs.slave_to_master.read_ready := vdd;
-      inputs.slave_to_master.read_data
-      := Bits.of_int_trunc ~width:32 (Bits.to_int_trunc !(outputs.master_to_slave.address) + 1));
-    if Bits.to_bool !(outputs.master_to_slave.write_valid)
-    then (
-            inputs.slave_to_master.write_ready := vdd;
-            print_s [%message "WR request " ~address:(to_int_trunc !(outputs.master_to_slave.address) : Int.Hex.t) ~data:(to_int_trunc !(outputs.master_to_slave.write_data) : Int.Hex.t)]);
-    ()
-  in
-  let check_dn () =
-    if Bits.to_bool !(outputs.dn.tvalid)
-    then
-      print_s
-        [%message
-          ""
-            ~_:
-              (Axi8.Source.map ~f:(fun t -> Bits.to_int_trunc !t) outputs.dn
-               : int Axi8.Source.t)];
-    ()
-  in
-  (* The fifo needs a clear cycle to initialize *)
-  inputs.clear := vdd;
-  Cyclesim.cycle sim;
-  Cyclesim.cycle sim;
-  Cyclesim.cycle sim;
-  inputs.clear := gnd;
-  let rec loop_for n =
-    if n = 0
-    then ()
-    else (
-      check_regif_state ();
-      check_dn ();
-      Cyclesim.cycle sim;
-      loop_for (n - 1))
-  in
-  List.iter
-    ~f:(fun input ->
-      inputs.data_in_valid := vdd;
-      inputs.data_in := of_int_trunc ~width:8 input;
-      check_regif_state ();
-      check_dn ();
-      Cyclesim.cycle sim;
-      inputs.data_in_valid := gnd;
-      loop_for 44)
-    all_inputs;
-  loop_for 200);
+    let inputs : _ Machine.I.t = Cyclesim.inputs sim in
+    let outputs : _ Machine.O.t = Cyclesim.outputs ~clock_edge:Before sim in
+    let check_regif_state () =
+      inputs.slave_to_master.read_ready := gnd;
+      if Bits.to_bool !(outputs.master_to_slave.read_valid)
+      then (
+        inputs.slave_to_master.read_ready := vdd;
+        inputs.slave_to_master.read_data
+        := Bits.of_int_trunc
+             ~width:32
+             (Bits.to_int_trunc !(outputs.master_to_slave.address) + 1));
+      if Bits.to_bool !(outputs.master_to_slave.write_valid)
+      then (
+        inputs.slave_to_master.write_ready := vdd;
+        print_s
+          [%message
+            "WR request "
+              ~address:(to_int_trunc !(outputs.master_to_slave.address) : Int.Hex.t)
+              ~data:(to_int_trunc !(outputs.master_to_slave.write_data) : Int.Hex.t)]);
+      ()
+    in
+    let check_dn () =
+      if Bits.to_bool !(outputs.dn.tvalid)
+      then
+        print_s
+          [%message
+            ""
+              ~_:
+                (Axi8.Source.map ~f:(fun t -> Bits.to_int_trunc !t) outputs.dn
+                 : int Axi8.Source.t)];
+      ()
+    in
+    (* The fifo needs a clear cycle to initialize *)
+    inputs.clear := vdd;
+    Cyclesim.cycle sim;
+    Cyclesim.cycle sim;
+    Cyclesim.cycle sim;
+    inputs.clear := gnd;
+    let rec loop_for n =
+      if n = 0
+      then ()
+      else (
+        check_regif_state ();
+        check_dn ();
+        Cyclesim.cycle sim;
+        loop_for (n - 1))
+    in
+    List.iter
+      ~f:(fun input ->
+        inputs.data_in_valid := vdd;
+        inputs.data_in := of_int_trunc ~width:8 input;
+        check_regif_state ();
+        check_dn ();
+        Cyclesim.cycle sim;
+        inputs.data_in_valid := gnd;
+        loop_for 44)
+      all_inputs;
+    loop_for 200)
 ;;
 
 let%expect_test "read tests" =
@@ -174,8 +180,8 @@ let%expect_test "read tests" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x00\x00\x00\x00\x00";
-
-  [%expect {|
+  [%expect
+    {|
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
@@ -187,8 +193,8 @@ let%expect_test "read tests" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x00\x00\x00\x00\x01";
-
-  [%expect {|
+  [%expect
+    {|
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 0) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
@@ -200,15 +206,14 @@ let%expect_test "read tests" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x00\x0A\x0B\x0C\x02";
-  [%expect {|
+  [%expect
+    {|
     ((tvalid 1) (tdata 10) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 11) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 12) (tkeep 1) (tstrb 1) (tlast 0) (tuser 0))
     ((tvalid 1) (tdata 3) (tkeep 1) (tstrb 1) (tlast 1) (tuser 0))
     |}]
 ;;
-
-
 
 let%expect_test "write tests" =
   test
@@ -217,20 +222,20 @@ let%expect_test "write tests" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x01\x00\x00\x00\x00\x00\x00\x00\x01";
-
-  [%expect {|
+  [%expect
+    {|
     ("WR request " (address 0x0) (data 0x1))
     ("WR request " (address 0x0) (data 0x1))
     |}];
-test
+  test
     ~clock_frequency:200
     ~baud_rate:50
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x01\x00\xc0\x00\x00\x11\x00\x00\x01";
-
-  [%expect {|
+  [%expect
+    {|
     ("WR request " (address 0xc00000) (data 0x11000001))
     ("WR request " (address 0xc00000) (data 0x11000001))
-    |}];
+    |}]
 ;;

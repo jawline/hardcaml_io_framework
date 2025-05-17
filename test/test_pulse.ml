@@ -128,6 +128,7 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"Hio";
-  [%expect {|
+  [%expect
+    {|
       Pulsed |}]
 ;;

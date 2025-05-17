@@ -110,14 +110,15 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         | x :: xs ->
           let%bind () =
             Tb.cycle
-              { Tb.input_zero with data_in_valid = vdd; data_in = of_int_trunc ~width:8 x }
+              { Tb.input_zero with
+                data_in_valid = vdd
+              ; data_in = of_int_trunc ~width:8 x
+              }
             >>| ignore
           in
           let rec wait_until_idle () =
             let%bind result = Tb.cycle Tb.input_zero in
-            if to_bool result.after_edge.tx_idle
-            then return ()
-            else wait_until_idle ()
+            if to_bool result.after_edge.tx_idle then return () else wait_until_idle ()
           in
           let%bind () = wait_until_idle () in
           consume_bytes xs

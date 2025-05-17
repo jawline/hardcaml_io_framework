@@ -164,7 +164,8 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x00H";
-  [%expect {|
+  [%expect
+    {|
       "Pulse 1 pulsed" |}];
   test
     ~name:"/tmp/test_router"
@@ -173,6 +174,7 @@ let%expect_test "test" =
     ~include_parity_bit:false
     ~stop_bits:1
     ~packet:"\x01H";
-  [%expect {|
+  [%expect
+    {|
       "Pulse 2 pulsed" |}]
 ;;
