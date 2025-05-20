@@ -3,6 +3,7 @@ open Hardcaml
 open Signal
 open! Always
 open Hardcaml_axi
+module Clocking = Types.Clocking
 
 (* This expects packets from a serial port in the form [ header ; length MSB ;
    length LSB ; data ... ]. If a second packet is received before this packet
@@ -50,31 +51,32 @@ struct
         (scope : Scope.t)
         ({ I.clock; clear; in_valid; in_data; dn = { tready = out_ready } } : _ I.t)
     =
-    let ( -- ) = Scope.naming scope in
     let reg_spec = Reg_spec.create ~clock ~clear () in
-    let state = State_machine.create (module State) reg_spec in
-    ignore (state.current -- "current_state" : Signal.t);
-    let reading_length = Variable.reg ~width:16 reg_spec in
-    let which_length_packet = Variable.reg ~width:4 reg_spec in
-    let num_length_packets =
-      let wserial = width in_data in
-      let wlen = width reading_length.value in
-      if wlen % wserial <> 0 then (wlen / wserial) + 1 else wlen / wserial
+    let clocking = { Clocking.clock; clear } in
+    let%hw.State_machine state = State_machine.create (module State) reg_spec in
+    let num_length_beats = 2 / (width in_data / 8) in
+    let which_length_packet =
+      Variable.reg ~width:(address_bits_for num_length_beats) reg_spec
     in
-    let length_this_cycle =
-      mux_init
-        which_length_packet.value
-        ~f:(fun which_length_packet_i ->
-          let current_parts = split_msb ~part_width:data_width reading_length.value in
-          let new_length =
-            concat_msb
-              (List.take current_parts which_length_packet_i
-               @ [ in_data ]
-               @ List.drop current_parts (which_length_packet_i + 1))
-          in
-          new_length)
-        num_length_packets
+    let length_parts =
+      List.init
+        ~f:(fun i ->
+          reg
+            ~enable:(state.is Waiting_for_length &: (which_length_packet.value ==:. i))
+            reg_spec
+            in_data)
+        num_length_beats
     in
+    let total_length = concat_msb length_parts in
+    let on_byte =
+      Clocking.reg_fb
+        ~width:(width total_length)
+        ~enable:(state.is Streaming_in &: in_valid &: out_ready)
+        ~clear_to:(of_unsigned_int ~width:(width total_length) 1)
+        ~f:(fun t -> t +:. 1)
+        (Clocking.add_clear clocking (state.is Waiting_for_start))
+    in
+    let last = on_byte ==: total_length in
     compile
       [ state.switch
           [ ( State.Waiting_for_start
@@ -84,12 +86,15 @@ struct
                   [ state.set_next Waiting_for_length ]
               ] )
           ; ( Waiting_for_length
-            , [ when_
+            , let length_this_cycle =
+                concat_msb
+                  (List.take length_parts (List.length length_parts - 1) @ [ in_data ])
+              in
+              [ when_
                   in_valid
                   [ incr which_length_packet
-                  ; reading_length <-- length_this_cycle
                   ; when_
-                      (which_length_packet.value ==:. num_length_packets - 1)
+                      (which_length_packet.value ==:. num_length_beats - 1)
                       [ (* Zero length packets are disallowed *)
                         if_
                           (length_this_cycle ==:. 0)
@@ -101,18 +106,14 @@ struct
           ; ( Streaming_in
             , [ when_
                   (in_valid &: out_ready)
-                  [ decr reading_length
-                  ; when_
-                      (reading_length.value ==:. 1)
-                      [ state.set_next Waiting_for_start ]
-                  ]
+                  [ when_ last [ state.set_next Waiting_for_start ] ]
               ] )
           ]
       ];
     { O.dn =
         { Axi.Source.tvalid = in_valid &: state.is Streaming_in
         ; tdata = in_data
-        ; tlast = reading_length.value ==:. 1
+        ; tlast = last
         ; tkeep = ones Axi.Source.port_widths.tkeep
         ; tstrb = ones Axi.Source.port_widths.tstrb
         ; tuser = zero Axi.Source.port_widths.tuser
