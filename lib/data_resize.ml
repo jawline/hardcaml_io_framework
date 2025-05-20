@@ -2,6 +2,7 @@ open! Core
 open Hardcaml
 open Signal
 open! Always
+module Clocking = Types.Clocking
 
 module Make (Config : sig
     val input_width : int
@@ -37,26 +38,28 @@ struct
   let buffer_beats = Config.output_width / Config.input_width
 
   let create (scope : Scope.t) ({ I.clock; clear; in_valid; in_data; out_ready } : _ I.t) =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
+    let clocking = { Clocking.clock; clear } in
     let%hw_var ctr =
-      Variable.reg ~width:(num_bits_to_represent (buffer_beats - 1)) reg_spec
+      Variable.reg
+        ~width:(num_bits_to_represent (buffer_beats - 1))
+        (Clocking.to_spec clocking)
     in
+    let last_beat = ctr.value ==:. buffer_beats - 1 in
     let data_parts =
       List.init
-        ~f:(fun i -> reg ~enable:(ctr.value ==:. i) reg_spec in_data)
+        ~f:(fun i -> Clocking.reg ~enable:(ctr.value ==:. i) clocking in_data)
         (buffer_beats - 1)
     in
     compile
-      [ when_
-          in_valid
-          [ ctr <-- mod_counter ~max:(buffer_beats - 1) ctr.value
-          ; when_ (ctr.value ==:. buffer_beats - 1) [ ctr <--. 0 ]
-          ]
+      [ if_
+          last_beat
+          [ when_ (in_valid &: out_ready) [ ctr <--. 0 ] ]
+          [ when_ in_valid [ ctr <-- mod_counter ~max:(buffer_beats - 1) ctr.value ] ]
       ];
-    { O.out_valid = ctr.value ==:. buffer_beats - 1 &: in_valid
-    ; out_data = concat_msb (List.concat [ data_parts; [ in_data ] ])
+    { O.out_valid = last_beat &: in_valid
+    ; out_data = concat_msb (data_parts @ [ in_data ])
     ; interim_data_buffered = ctr.value <>:. 0
-    ; ready = ctr.value <:. buffer_beats - 2 |: out_ready
+    ; ready = ~:last_beat |: out_ready
     }
   ;;
 
