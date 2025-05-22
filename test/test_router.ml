@@ -65,16 +65,10 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
       let { Uart_tx.O.uart_tx; _ } =
-        Uart_tx.hierarchical
-          ~instance:"tx"
-          scope
-          { Uart_tx.I.clock; clear; data_in_valid; data_in }
+        Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
-        Uart_rx.hierarchical
-          ~instance:"rx"
-          scope
-          { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+        Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx = uart_tx }
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
