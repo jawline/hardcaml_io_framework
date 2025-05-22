@@ -72,7 +72,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
@@ -85,7 +84,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       let pulse_2_ready = wire 1 in
       let router =
         Router.hierarchical
-          ~instance:"router"
           scope
           { Router.I.clock
           ; clear
@@ -94,16 +92,10 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           }
       in
       let pulse_1 =
-        Pulse.hierarchical
-          ~instance:"pulse_1"
-          scope
-          { Pulse.I.clock; clear; up = List.nth_exn router.dns 0 }
+        Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 0 }
       in
       let pulse_2 =
-        Pulse.hierarchical
-          ~instance:"pulse_2"
-          scope
-          { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
+        Pulse.hierarchical scope { Pulse.I.clock; clear; up = List.nth_exn router.dns 1 }
       in
       pulse_1_ready <-- pulse_1.up.tready;
       pulse_2_ready <-- pulse_2.up.tready;

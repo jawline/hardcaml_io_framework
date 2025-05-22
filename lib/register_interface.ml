@@ -1,11 +1,8 @@
-(** This module implements a register interface read/write protocol, allowing
-    for interaction with a register bank. *)
 open! Core
-
 open Hardcaml
+open Hardcaml_axi
 open Signal
 open Always
-open Hardcaml_axi
 
 module Tags = struct
   type t =
@@ -173,8 +170,8 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"register_interface" ~instance create input
+    H.hierarchical ~scope ~name:"register_interface" create input
   ;;
 end

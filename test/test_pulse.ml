@@ -61,7 +61,6 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
@@ -70,9 +69,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           ; dn = { tready = vdd }
           }
       in
-      let pulse =
-        Pulse.hierarchical ~instance:"pulse" scope { Pulse.I.clock; clear; up = dn }
-      in
+      let pulse = Pulse.hierarchical scope { Pulse.I.clock; clear; up = dn } in
       { O.pulse = pulse.signal }
     ;;
   end

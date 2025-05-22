@@ -1,6 +1,4 @@
-(** This is an IO module that pulses a signal once per packet it receives. *)
 open! Core
-
 open Hardcaml
 open Hardcaml_axi
 open Signal
@@ -27,8 +25,8 @@ module Make (Axi : Stream.S) = struct
     { O.up = { Axi.Dest.tready = vdd }; signal = up.tvalid &: up.tlast }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"pulse" ~instance create input
+    H.hierarchical ~scope ~name:"pulse" create input
   ;;
 end

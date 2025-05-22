@@ -73,7 +73,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
-          ~instance:"serial_to_packet"
           scope
           { Serial_to_packet.I.clock
           ; clear
@@ -84,7 +83,6 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
       in
       let register_interface =
         Register_interface.hierarchical
-          ~instance:"register_interface"
           scope
           { Register_interface.I.clock
           ; clear

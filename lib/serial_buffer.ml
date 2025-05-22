@@ -45,8 +45,8 @@ struct
     { O.out_valid = ~:(buffer.empty); out_data = buffer.q }
   ;;
 
-  let hierarchical ~instance ~capacity (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical ~capacity (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"serial_buffer" ~instance (create ~capacity) input
+    H.hierarchical ~scope ~name:"serial_buffer" (create ~capacity) input
   ;;
 end

@@ -4,9 +4,6 @@ open Hardcaml_axi
 open Signal
 open! Always
 
-(* This expects packets with a leading tag byte that we use to route to one of
-   several output streams. *)
-
 module Make
     (Config : sig
        val num_tags : int
@@ -103,8 +100,8 @@ struct
     }
   ;;
 
-  let hierarchical ~instance (scope : Scope.t) (input : Signal.t I.t) =
+  let hierarchical (scope : Scope.t) (input : Signal.t I.t) =
     let module H = Hierarchy.In_scope (I) (O) in
-    H.hierarchical ~scope ~name:"packet_router" ~instance create input
+    H.hierarchical ~scope ~name:"router" create input
   ;;
 end
