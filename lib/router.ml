@@ -95,7 +95,7 @@ struct
             Axi.Source.Of_signal.mux2
               (which_tag.value ==:. index &: state.is Routing)
               up
-              (Axi.Source.Of_signal.of_int 0))
+              (Axi.Source.Of_signal.zero ()))
           Config.num_tags
     }
   ;;
