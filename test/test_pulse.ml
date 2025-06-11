@@ -49,11 +49,11 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     end
 
     module O = struct
-      type 'a t = { pulse : 'a } [@@deriving hardcaml]
+            type 'a t = { pulse : 'a ; ready_for_next_input : 'a } [@@deriving hardcaml]
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
-      let { Uart_tx.O.uart_tx; _ } =
+            let { Uart_tx.O.uart_tx; idle = ready_for_next_input ; _ } =
         Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
@@ -70,7 +70,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
           }
       in
       let pulse = Pulse.hierarchical scope { Pulse.I.clock; clear; up = dn } in
-      { O.pulse = pulse.signal }
+      { O.pulse = pulse.signal ; ready_for_next_input }
     ;;
   end
   in
@@ -91,23 +91,22 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   inputs.clear := gnd;
-  let rec loop_for n =
-    if n = 0
-    then ()
-    else (
+
+  let rec loop_until_ready_for_next_input () =
       Cyclesim.cycle sim;
-      if Bits.to_bool !(outputs.pulse) then print_s [%message "Pulsed"];
-      loop_for (n - 1))
-  in
+            if Bits.to_bool !(outputs.pulse) then print_s [%message "Pulsed"];
+      if Bits.to_bool !(outputs.ready_for_next_input)
+      then ()
+      else loop_until_ready_for_next_input ()
+    in
   List.iter
     ~f:(fun input ->
       inputs.data_in_valid := vdd;
       inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := gnd;
-      loop_for 44)
+      loop_until_ready_for_next_input () )
     all_inputs;
-  loop_for 100;
   if debug then Waveform.Serialize.marshall waveform name
 ;;
 
