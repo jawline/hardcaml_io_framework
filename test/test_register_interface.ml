@@ -57,6 +57,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
       type 'a t =
         { dn : 'a Axi8.Source.t
         ; master_to_slave : 'a Internal_bus.Master_to_slave.t
+        ; ready_for_next_input : 'a
         }
       [@@deriving hardcaml]
     end
@@ -65,7 +66,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
           (scope : Scope.t)
           { I.clock; clear; data_in_valid; data_in; slave_to_master }
       =
-      let { Uart_tx.O.uart_tx; _ } =
+      let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
         Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
@@ -93,6 +94,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
       in
       { O.dn = register_interface.dn
       ; master_to_slave = register_interface.master_to_slave
+      ; ready_for_next_input
       }
     ;;
   end
@@ -143,6 +145,14 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
     Cyclesim.cycle sim;
     Cyclesim.cycle sim;
     inputs.clear := gnd;
+    let rec loop_until_ready_for_next_input () =
+      Cyclesim.cycle sim;
+      check_regif_state ();
+      check_dn ();
+      if Bits.to_bool !(outputs.ready_for_next_input)
+      then ()
+      else loop_until_ready_for_next_input ()
+    in
     let rec loop_for n =
       if n = 0
       then ()
@@ -160,9 +170,9 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
         check_dn ();
         Cyclesim.cycle sim;
         inputs.data_in_valid := gnd;
-        loop_for 44)
+        loop_until_ready_for_next_input ())
       all_inputs;
-    loop_for 200)
+    loop_for 100)
 ;;
 
 let%expect_test "read tests" =
@@ -218,6 +228,7 @@ let%expect_test "write tests" =
     {|
     ("WR request " (address 0x0) (data 0x1))
     ("WR request " (address 0x0) (data 0x1))
+    ("WR request " (address 0x0) (data 0x1))
     |}];
   test
     ~clock_frequency:200
@@ -227,6 +238,7 @@ let%expect_test "write tests" =
     ~packet:"\x01\x00\xc0\x00\x00\x11\x00\x00\x01";
   [%expect
     {|
+    ("WR request " (address 0xc00000) (data 0x11000001))
     ("WR request " (address 0xc00000) (data 0x11000001))
     ("WR request " (address 0xc00000) (data 0x11000001))
     |}]

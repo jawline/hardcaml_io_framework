@@ -59,12 +59,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       type 'a t =
         { pulse_1 : 'a
         ; pulse_2 : 'a
+        ; ready_for_next_input : 'a
         }
       [@@deriving hardcaml]
     end
 
     let create (scope : Scope.t) { I.clock; clear; data_in_valid; data_in } =
-      let { Uart_tx.O.uart_tx; _ } =
+      let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
         Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
@@ -99,7 +100,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       in
       pulse_1_ready <-- pulse_1.up.tready;
       pulse_2_ready <-- pulse_2.up.tready;
-      { O.pulse_1 = pulse_1.signal; pulse_2 = pulse_2.signal }
+      { O.pulse_1 = pulse_1.signal; pulse_2 = pulse_2.signal; ready_for_next_input }
     ;;
   end
   in
@@ -120,14 +121,13 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   Cyclesim.cycle sim;
   Cyclesim.cycle sim;
   inputs.clear := gnd;
-  let rec loop_for n =
-    if n = 0
+  let rec loop_until_ready_for_next_input () =
+    Cyclesim.cycle sim;
+    if to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
+    if to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
+    if Bits.to_bool !(outputs.ready_for_next_input)
     then ()
-    else (
-      Cyclesim.cycle sim;
-      if to_bool !(outputs.pulse_1) then print_s [%message "Pulse 1 pulsed"];
-      if to_bool !(outputs.pulse_2) then print_s [%message "Pulse 2 pulsed"];
-      loop_for (n - 1))
+    else loop_until_ready_for_next_input ()
   in
   List.iter
     ~f:(fun input ->
@@ -135,9 +135,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       inputs.data_in := of_int_trunc ~width:8 input;
       Cyclesim.cycle sim;
       inputs.data_in_valid := gnd;
-      loop_for 44)
+      loop_until_ready_for_next_input ())
     all_inputs;
-  loop_for 500;
   if debug
   then Waveform.expect ~serialize_to:name ~display_width:150 ~display_height:100 waveform
 ;;
