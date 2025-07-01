@@ -5,7 +5,7 @@ open Hardcaml_uart
 open Hardcaml_io_framework
 open! Bits
 
-let debug = true
+let debug = false
 
 let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packets =
   let module Config = struct
