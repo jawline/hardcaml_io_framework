@@ -44,7 +44,7 @@ struct
       | Waiting_for_start
       | Waiting_for_length
       | Streaming_in
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create

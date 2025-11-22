@@ -124,7 +124,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     let cycles = ref 0 in
     let rec loop () =
       let%bind output = Tb.cycle Tb.input_hold in
-      incr cycles;
+      Core.incr cycles;
       let output = output.before_edge in
       if to_bool output.data_out_valid
       then output_bytes := to_int_trunc output.data_out :: !output_bytes;

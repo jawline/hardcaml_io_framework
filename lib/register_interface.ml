@@ -54,7 +54,7 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
       | Write_wait_address
       | Write_wait_data
       | Write_wait_ack
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create (scope : Scope.t) ({ clock; clear; up; dn; slave_to_master } : _ I.t) =

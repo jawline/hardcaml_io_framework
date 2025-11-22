@@ -33,7 +33,7 @@ struct
       | Waiting_for_start_of_packet
       | Routing
       | Discarding_bad_tag
-    [@@deriving sexp, enumerate, compare]
+    [@@deriving sexp, enumerate, compare ~localize]
   end
 
   let create (scope : Scope.t) ({ I.clock; clear; up; dns } : _ I.t) =

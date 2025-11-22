@@ -6,6 +6,8 @@ open Hardcaml_io_framework
 open Hardcaml_test_harness
 open! Bits
 
+let debug = false 
+
 module Internal_bus = Internal_bus.Make (struct
     let data_bits = 32
     let addr_bits = 32
@@ -102,7 +104,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
   let module Harness = Cyclesim_harness.Make (Machine.I) (Machine.O) in
   let create_sim f =
     Harness.run
-      ~waves_config:Waves_config.No_waves
+      ~waves_config:(Waves_config.to_home_subdirectory_when debug)
       ~create:Machine.create
       (fun ~inputs:_ ~outputs:_ sim -> f sim)
   in
