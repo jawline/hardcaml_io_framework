@@ -6,7 +6,7 @@ open Hardcaml_io_framework
 open Hardcaml_test_harness
 open! Bits
 
-let debug = false 
+let debug = false
 
 module Internal_bus = Internal_bus.Make (struct
     let data_bits = 32
