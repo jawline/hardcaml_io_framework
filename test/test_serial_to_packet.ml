@@ -74,7 +74,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     ;;
   end
   in
-  let module Tb = Hardcaml_step_testbench.Monadic.Functional.Cyclesim.Make (Machine.I) (Machine.O)
+  let module Tb =
+    Hardcaml_step_testbench.Monadic.Functional.Cyclesim.Make (Machine.I) (Machine.O)
   in
   let open Tb.Let_syntax in
   let create_sim () =
