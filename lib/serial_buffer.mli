@@ -6,8 +6,7 @@ module Make (_ : sig
   end) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_valid : 'a
       ; in_data : 'a
       ; out_ready : 'a

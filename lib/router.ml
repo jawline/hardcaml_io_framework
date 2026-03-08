@@ -12,8 +12,7 @@ module Make
 struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; up : 'a Axi.Source.t
       ; dns : 'a Axi.Dest.t list [@length Config.num_tags]
       }
@@ -36,9 +35,9 @@ struct
     [@@deriving sexp, enumerate, compare ~localize]
   end
 
-  let create (scope : Scope.t) ({ I.clock; clear; up; dns } : _ I.t) =
+  let create (scope : Scope.t) ({ I.clock; up; dns } : _ I.t) =
     let ( -- ) = Scope.naming scope in
-    let reg_spec = Reg_spec.create ~clock ~clear () in
+    let reg_spec = Clocking.to_spec clock in
     let state = State_machine.create (module State) reg_spec in
     ignore (state.current -- "current_state" : Signal.t);
     let%hw_var which_tag =

@@ -69,16 +69,19 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
           { I.clock; clear; data_in_valid; data_in; slave_to_master }
       =
       let { Uart_tx.O.uart_tx; idle = ready_for_next_input; _ } =
-        Uart_tx.hierarchical scope { Uart_tx.I.clock; clear; data_in_valid; data_in }
+        Uart_tx.hierarchical
+          scope
+          { Uart_tx.I.clock = { clock; clear }; data_in_valid; data_in }
       in
       let { Uart_rx.O.data_out_valid; data_out; parity_error = _ } =
-        Uart_rx.hierarchical scope { Uart_rx.I.clock; clear; uart_rx = uart_tx }
+        Uart_rx.hierarchical
+          scope
+          { Uart_rx.I.clock = { clock; clear }; uart_rx = uart_tx }
       in
       let { Serial_to_packet.O.dn; up_ready = _ } =
         Serial_to_packet.hierarchical
           scope
-          { Serial_to_packet.I.clock
-          ; clear
+          { Serial_to_packet.I.clock = { clock; clear }
           ; in_valid = data_out_valid
           ; in_data = data_out
           ; dn = { tready = vdd }
@@ -87,8 +90,7 @@ let test ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packet =
       let register_interface =
         Register_interface.hierarchical
           scope
-          { Register_interface.I.clock
-          ; clear
+          { Register_interface.I.clock = { clock; clear }
           ; up = dn
           ; dn = { tready = vdd }
           ; slave_to_master

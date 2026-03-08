@@ -27,8 +27,7 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; up : 'a Axi.Source.t
       ; dn : 'a Axi.Dest.t
       ; slave_to_master : 'a Slave_to_master.t
@@ -57,14 +56,13 @@ module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) = struct
     [@@deriving sexp, enumerate, compare ~localize]
   end
 
-  let create (scope : Scope.t) ({ clock; clear; up; dn; slave_to_master } : _ I.t) =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
+  let create (scope : Scope.t) ({ clock; up; dn; slave_to_master } : _ I.t) =
+    let reg_spec = Clocking.to_spec clock in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
     let word_collector =
       Resize_to_word.hierarchical
         scope
-        { Resize_to_word.I.clock
-        ; clear = clear |: state.is Waiting_for_tag
+        { Resize_to_word.I.clock = Clocking.add_clear clock (state.is Waiting_for_tag)
         ; in_valid = up.tvalid
         ; in_data = up.tdata
         ; out_ready = vdd

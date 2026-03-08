@@ -11,8 +11,7 @@ module Make (Config : sig
 struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_valid : 'a
       ; in_data : 'a [@bits Config.input_width]
       ; out_ready : 'a
@@ -37,17 +36,16 @@ struct
 
   let buffer_beats = Config.output_width / Config.input_width
 
-  let create (scope : Scope.t) ({ I.clock; clear; in_valid; in_data; out_ready } : _ I.t) =
-    let clocking = { Clocking.clock; clear } in
+  let create (scope : Scope.t) ({ I.clock; in_valid; in_data; out_ready } : _ I.t) =
     let%hw_var ctr =
-      Variable.reg
+      Always.Variable.reg
         ~width:(num_bits_to_represent (buffer_beats - 1))
-        (Clocking.to_spec clocking)
+        (Clocking.to_spec clock)
     in
     let last_beat = ctr.value ==:. buffer_beats - 1 in
     let data_parts =
       List.init
-        ~f:(fun i -> Clocking.reg ~enable:(ctr.value ==:. i) clocking in_data)
+        ~f:(fun i -> Clocking.reg ~enable:(ctr.value ==:. i) clock in_data)
         (buffer_beats - 1)
     in
     compile

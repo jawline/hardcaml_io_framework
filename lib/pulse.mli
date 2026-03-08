@@ -7,8 +7,7 @@ open Hardcaml_axi
 module Make (Axi : Stream.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; up : 'a Axi.Source.t
       }
     [@@deriving hardcaml]

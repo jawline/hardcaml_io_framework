@@ -8,8 +8,7 @@ open Hardcaml_axi
 module Make (Axi : Stream.S) (Internal_bus : Internal_bus.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; up : 'a Axi.Source.t
       ; dn : 'a Axi.Dest.t
       ; slave_to_master : 'a Internal_bus.Slave_to_master.t

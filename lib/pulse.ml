@@ -6,8 +6,7 @@ open Signal
 module Make (Axi : Stream.S) = struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; up : 'a Axi.Source.t
       }
     [@@deriving hardcaml ~rtlmangle:"$"]
@@ -21,7 +20,7 @@ module Make (Axi : Stream.S) = struct
     [@@deriving hardcaml ~rtlmangle:"$"]
   end
 
-  let create (_scope : Scope.t) ({ I.clock = _; clear = _; up } : _ I.t) =
+  let create (_scope : Scope.t) ({ I.clock = _; up } : _ I.t) =
     { O.up = { Axi.Dest.tready = vdd }; signal = up.tvalid &: up.tlast }
   ;;
 

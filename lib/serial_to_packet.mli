@@ -14,8 +14,7 @@ module Make
     (Axi : Stream.S) : sig
   module I : sig
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_valid : 'a
       ; in_data : 'a
       ; dn : 'a Axi.Dest.t

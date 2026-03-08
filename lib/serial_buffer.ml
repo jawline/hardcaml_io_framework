@@ -9,8 +9,7 @@ module Make (Config : sig
 struct
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_valid : 'a
       ; in_data : 'a [@bits Config.serial_input_width]
       ; out_ready : 'a
@@ -29,14 +28,14 @@ struct
   let create
         ~capacity
         (_scope : Scope.t)
-        ({ I.clock; clear; in_valid; in_data; out_ready } : _ I.t)
+        ({ I.clock; in_valid; in_data; out_ready } : _ I.t)
     =
     let buffer =
       Fifo.create
         ~showahead:true
         ~capacity
-        ~clock
-        ~clear
+        ~clock:clock.clock
+        ~clear:clock.clear
         ~wr:in_valid
         ~d:in_data
         ~rd:out_ready

@@ -22,8 +22,7 @@ struct
 
   module I = struct
     type 'a t =
-      { clock : 'a
-      ; clear : 'a
+      { clock : 'a Clocking.t
       ; in_valid : 'a
       ; in_data : 'a [@bits data_width]
       ; dn : 'a Axi.Dest.t
@@ -49,10 +48,9 @@ struct
 
   let create
         (scope : Scope.t)
-        ({ I.clock; clear; in_valid; in_data; dn = { tready = out_ready } } : _ I.t)
+        ({ I.clock; in_valid; in_data; dn = { tready = out_ready } } : _ I.t)
     =
-    let reg_spec = Reg_spec.create ~clock ~clear () in
-    let clocking = { Clocking.clock; clear } in
+    let reg_spec = Clocking.to_spec clock in
     let%hw.State_machine state = State_machine.create (module State) reg_spec in
     let num_length_beats = 2 / (width in_data / 8) in
     let which_length_packet =
@@ -74,7 +72,7 @@ struct
         ~enable:(state.is Streaming_in &: in_valid &: out_ready)
         ~clear_to:(of_unsigned_int ~width:(width total_length) 1)
         ~f:(fun t -> t +:. 1)
-        (Clocking.add_clear clocking (state.is Waiting_for_start))
+        (Clocking.add_clear clock (state.is Waiting_for_start))
     in
     let last = on_byte ==: total_length in
     compile
