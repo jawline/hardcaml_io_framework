@@ -77,10 +77,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     ;;
   end
   in
-  let module Tb =
-    Hardcaml_step_testbench.Monadic.Functional.Cyclesim.Make (Machine.I) (Machine.O)
-  in
-  let open Tb.Let_syntax in
+  let open Hardcaml_step_testbench in
+  let module Tb = Functional.Cyclesim.Make (Machine.I) (Machine.O) in
   let create_sim () =
     let module Sim = Cyclesim.With_interface (Machine.I) (Machine.O) in
     Sim.create
@@ -90,8 +88,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   in
   let sim = create_sim () in
   let waveform, sim = Waveform.create sim in
-  let rec send_inputs = function
-    | [] -> return ()
+  let rec send_inputs handler = function
+    | [] -> ()
     | packet :: xs ->
       let input_bytes =
         (* We add the header and then the packet length before the packet *)
@@ -102,71 +100,76 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
         [ Char.to_int 'Q'; packet_len_msb; packet_len_lsb ]
         @ List.map ~f:Char.to_int packet
       in
-      let rec consume_bytes = function
-        | [] -> return ()
+      let rec consume_bytes handler = function
+        | [] -> ()
         | x :: xs ->
-          let%bind () =
-            Tb.cycle
-              { Tb.input_zero with
-                data_in_valid = vdd
-              ; data_in = of_int_trunc ~width:8 x
-              }
-            >>| ignore
+          Tb.cycle handler
+            { Tb.input_zero with
+              data_in_valid = vdd
+            ; data_in = of_int_trunc ~width:8 x
+            }
+          |> ignore;
+          let rec wait_until_idle handler =
+            let output = Tb.cycle handler Tb.input_hold in
+            if to_bool output.after_edge.tx_idle then () else wait_until_idle handler
           in
-          let rec wait_until_idle () =
-            let%bind result = Tb.cycle Tb.input_zero in
-            if to_bool result.after_edge.tx_idle then return () else wait_until_idle ()
-          in
-          let%bind () = wait_until_idle () in
-          consume_bytes xs
+          wait_until_idle handler;
+          consume_bytes handler xs
       in
-      let%bind () = consume_bytes input_bytes in
-      send_inputs xs
+      consume_bytes handler input_bytes;
+      send_inputs handler xs
   in
-  let receive_packet () =
+  let receive_packet handler =
     let output_bytes = ref [] in
     let cycles = ref 0 in
-    let rec loop () =
-      let%bind output = Tb.cycle Tb.input_hold in
+    let rec loop handler =
+      let output = Tb.cycle handler Tb.input_hold in
       Core.incr cycles;
       let output = output.before_edge in
       if to_bool output.data_out_valid
       then output_bytes := to_int_trunc output.data_out :: !output_bytes;
       if to_bool output.data_out_valid && to_bool output.last
-      then
-        return
-          (List.rev !output_bytes |> List.map ~f:Char.of_int_exn |> String.of_char_list)
-      else loop ()
+      then (
+        let result =
+          List.rev !output_bytes |> List.map ~f:Char.of_int_exn |> String.of_char_list
+        in
+        print_s [%message "Received packet in" ~cycles:(!cycles : int)];
+        result)
+      else loop handler
     in
-    let%bind result = loop () in
-    print_s [%message "Received packet in" ~cycles:(!cycles : int)];
-    Tb.return result
+    loop handler
   in
-  let receive_packets ~n =
-    let rec inner ~n =
+  let receive_packets handler ~n =
+    let rec inner handler ~n =
       if n = 0
-      then return []
+      then []
       else (
-        let%bind next = receive_packet () in
+        let next = receive_packet handler in
         print_s [%message "Next packet" (next : string)];
-        let%bind succ = inner ~n:(n - 1) in
-        return (next :: succ))
+        let succ = inner handler ~n:(n - 1) in
+        next :: succ)
     in
-    inner ~n
+    inner handler ~n
   in
-  let testbench _i =
-    let%bind () = Tb.cycle { Tb.input_zero with clear = vdd } >>| ignore in
-    let%bind result = Tb.spawn (fun _ -> receive_packets ~n:(List.length packets)) in
-    let%bind () = send_inputs packets in
-    let%bind result = Tb.wait_for result in
+  let testbench handler _initial_output =
+    Tb.cycle handler { Tb.input_zero with clear = vdd } |> ignore;
+    let result_event =
+      Tb.spawn handler
+        (fun spawned_handler _output ->
+          receive_packets spawned_handler ~n:(List.length packets))
+    in
+    send_inputs handler packets;
+    let result = Tb.wait_for handler result_event in
     if debug then Waveform.Serialize.marshall waveform name;
     if not (List.equal String.equal result packets)
     then
       raise_s
         [%message
-          "BUG: Inputs and outputs diverge" (packets : string list) (result : string list)];
+          "BUG: Inputs and outputs diverge"
+            (packets : string list)
+            (result : string list)];
     print_s [%message "PASSED"];
-    return ()
+    ()
   in
   Option.value_exn (Tb.run_with_timeout ~timeout:5000 ~simulator:sim ~testbench ())
 ;;
