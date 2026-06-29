@@ -103,11 +103,9 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
       let rec consume_bytes handler = function
         | [] -> ()
         | x :: xs ->
-          Tb.cycle handler
-            { Tb.input_zero with
-              data_in_valid = vdd
-            ; data_in = of_int_trunc ~width:8 x
-            }
+          Tb.cycle
+            handler
+            { Tb.input_zero with data_in_valid = vdd; data_in = of_int_trunc ~width:8 x }
           |> ignore;
           let rec wait_until_idle handler =
             let output = Tb.cycle handler Tb.input_hold in
@@ -154,9 +152,8 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
   let testbench handler _initial_output =
     Tb.cycle handler { Tb.input_zero with clear = vdd } |> ignore;
     let result_event =
-      Tb.spawn handler
-        (fun spawned_handler _output ->
-          receive_packets spawned_handler ~n:(List.length packets))
+      Tb.spawn handler (fun spawned_handler _output ->
+        receive_packets spawned_handler ~n:(List.length packets))
     in
     send_inputs handler packets;
     let result = Tb.wait_for handler result_event in
@@ -165,9 +162,7 @@ let test ~name ~clock_frequency ~baud_rate ~include_parity_bit ~stop_bits ~packe
     then
       raise_s
         [%message
-          "BUG: Inputs and outputs diverge"
-            (packets : string list)
-            (result : string list)];
+          "BUG: Inputs and outputs diverge" (packets : string list) (result : string list)];
     print_s [%message "PASSED"];
     ()
   in
